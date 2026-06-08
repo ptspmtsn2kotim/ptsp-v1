@@ -31,9 +31,11 @@ app.use('/api', express.json());
 
 // Custom CORS headers for API access from external environments (like Vercel)
 app.use('/api', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     res.sendStatus(200);
     return;
@@ -190,38 +192,147 @@ function loadDb() {
 // Initial DB load
 loadDb();
 
-// Google Sheets integration helper function
-function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', reason = '') {
+// Google Sheets integration and Real-time syncing helper functions
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfuOP1-dJBnkCPUOZVv68IOsJCrSMxsKEr3D6Q7UumDXGfWe7-wj8uffatSUmy2_1EVA/exec';
+
+syncFromGoogleSheets();
+
+async function syncFromGoogleSheets() {
   try {
-    const sheetData = {
-      sheetName: request['serviceName'] as string,
-      status: (request['status'] as string) || 'Menunggu Verifikasi',
-      keterangan: reason || (request['status'] === 'Selesai' ? 'Disetujui' : (request['status'] === 'Ditolak' ? 'Ditolak' : 'Menunggu Verifikasi')),
-      admin: adminName,
-      tanggalVerifikasi: adminName ? new Date().toISOString() : '',
-      tanggalPengajuan: (request['createdAt'] as string) || new Date().toISOString(),
-      namaSiswa: (request['studentName'] as string) || 'Anonim',
-      ...((request['data'] || {}) as Record<string, unknown>)
+    const response = await fetch(`${APPS_SCRIPT_URL}?action=get_db`, {
+      method: 'GET'
+    });
+    const result = (await response.json()) as { 
+      status: string; 
+      data?: { 
+        users?: Record<string, unknown>[]; 
+        requests?: Record<string, unknown>[]; 
+      } 
     };
+    
+    if (result.status === 'success' && result.data) {
+      const db = result.data;
+      if (db.users && db.users.length > 0) {
+        // Merge users
+        db.users.forEach((u) => {
+          const uId = Number(u['id']);
+          const idx = users.findIndex(existing => existing.id === uId);
+          const mappedUser = {
+            id: uId,
+            username: String(u['username']),
+            password: String(u['password']),
+            role: String(u['role']),
+            name: String(u['name']),
+            email: String(u['email'] || ''),
+            nis: String(u['nis'] || ''),
+            kelas: String(u['kelas'] || '')
+          };
+          if (idx !== -1) {
+            users[idx] = mappedUser;
+          } else {
+            users.push(mappedUser);
+          }
+        });
+        userCounter = Math.max(...users.map(u => u.id), 10) + 1;
+      }
+      
+      if (db.requests && db.requests.length > 0) {
+        // Merge requests
+        db.requests.forEach((r) => {
+          const rId = Number(r['id']);
+          const idx = requests.findIndex(existing => Number(existing['id']) === rId);
+          const mappedRequest = {
+            id: rId,
+            studentId: Number(r['studentId'] || 0),
+            studentName: String(r['studentName'] || 'Anonim'),
+            serviceId: String(r['serviceId']),
+            serviceName: String(r['serviceName']),
+            status: String(r['status']),
+            currentTier: String(r['currentTier']),
+            createdAt: String(r['createdAt']),
+            data: (r['data'] || {}) as Record<string, unknown>,
+            history: (r['history'] || []) as Record<string, unknown>[]
+          };
+          if (idx !== -1) {
+            requests[idx] = mappedRequest;
+          } else {
+            requests.push(mappedRequest);
+          }
+        });
+        requestCounter = Math.max(...requests.map(r => Number(r['id'])), 0) + 1;
+      }
+      saveDb();
+      console.log('Database synchronized from Google Sheets successfully');
+    }
+  } catch (error) {
+    console.error('Error synchronizing database from Google Sheets:', error);
+  }
+}
 
-    console.log(`Sending data to Google Sheets [${request['serviceName']}]:`, JSON.stringify(sheetData));
-
-    fetch('https://script.google.com/macros/s/AKfycbxvbPYaZejERZr1vrOqXvhPOljDxF-7Jqz8lYVzuHJbCzEzYmC67c-I57Yj8bVVRFCrEw/exec', {
+async function saveUserToGoogleSheets(user: Record<string, unknown>) {
+  try {
+    const payload = {
+      action: 'save_user',
+      user: user
+    };
+    await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sheetData)
-    })
-    .then(async (response) => {
-      const text = await response.text();
-      console.log(`Google Sheets integration response: Status ${response.status}`, text);
-    })
-    .catch(err => {
-      console.error('Failed to send to Google Sheets:', err);
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
   } catch (e) {
-    console.error('Error preparing Google Sheets payload', e);
+    console.error('Error saving user to Google Sheets:', e);
+  }
+}
+
+async function deleteUserFromGoogleSheets(id: number) {
+  try {
+    const payload = {
+      action: 'delete_user',
+      id: id
+    };
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Error deleting user from Google Sheets:', e);
+  }
+}
+
+async function saveRequestToGoogleSheets(request: Record<string, unknown>) {
+  try {
+    const payload = {
+      action: 'save_request',
+      request: request
+    };
+    console.log(`Sending updated request [ID: ${request['id']}] to Google Sheets...`);
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const resultObj = await res.json() as { status: string; message: string };
+    console.log(`Google Sheets save_request response: [${resultObj.status}] ${resultObj.message}`);
+  } catch (e) {
+    console.error('Error saving request to Google Sheets:', e);
+  }
+}
+
+async function deleteRequestFromGoogleSheets(id: number) {
+  try {
+    const payload = {
+      action: 'delete_request',
+      id: id
+    };
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.error('Error deleting request from Google Sheets:', e);
   }
 }
 
@@ -261,8 +372,9 @@ app.get('/api/services', (req: Request, res: Response) => {
 });
 
 // User Management Routes (Admin Only)
-app.get('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/users', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'Admin') { res.status(403).json({ message: 'Forbidden' }); return; }
+  await syncFromGoogleSheets();
   // Return users without passwords
   const safeUsers = users.map(u => {
     const safeUser = { ...u } as Record<string, unknown>;
@@ -272,7 +384,7 @@ app.get('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) =
   res.json(safeUsers);
 });
 
-app.post('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/users', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'Admin') { res.status(403).json({ message: 'Forbidden' }); return; }
   const { username, password, role, name, nis, kelas, email } = req.body;
   
@@ -284,6 +396,7 @@ app.post('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) 
   const newUser = { id: userCounter++, username, password, role, name, nis, kelas, email };
   users.push(newUser);
   saveDb();
+  await saveUserToGoogleSheets(newUser);
   
   const safeUser = { ...newUser } as Record<string, unknown>;
   delete safeUser['password'];
@@ -312,7 +425,7 @@ app.post('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) 
   res.status(201).json(safeUser);
 });
 
-app.put('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.put('/api/users/:id', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'Admin') { res.status(403).json({ message: 'Forbidden' }); return; }
   const { id } = req.params;
   const { username, password, role, name, nis, kelas, email } = req.body;
@@ -332,6 +445,7 @@ app.put('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Respons
   
   users[userIndex] = updatedUser;
   saveDb();
+  await saveUserToGoogleSheets(updatedUser);
   const safeUser = { ...updatedUser } as Record<string, unknown>;
   delete safeUser['password'];
 
@@ -359,7 +473,7 @@ app.put('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Respons
   res.json(safeUser);
 });
 
-app.delete('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.delete('/api/users/:id', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'Admin') { res.status(403).json({ message: 'Forbidden' }); return; }
   const { id } = req.params;
   
@@ -371,16 +485,19 @@ app.delete('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Resp
     return;
   }
   
+  const deletedUserId = users[userIndex].id;
   users.splice(userIndex, 1);
   saveDb();
+  await deleteUserFromGoogleSheets(deletedUserId);
   res.status(204).send();
 });
 
 // Public Requests Route
-app.post('/api/public/requests', (req: Request, res: Response) => {
+app.post('/api/public/requests', async (req: Request, res: Response) => {
   const service = services.find(s => s.id === req.body.serviceId);
   if (!service) { res.status(400).json({ message: 'Invalid service' }); return; }
   
+  await syncFromGoogleSheets();
   const data = req.body.data || {};
   const studentName = data.namaPemohon || data.namaPelapor || data.nama || 'Anonim';
   
@@ -398,17 +515,18 @@ app.post('/api/public/requests', (req: Request, res: Response) => {
   };
   requests.push(newRequest);
   saveDb();
-  sendToGoogleSheets(newRequest);
+  await saveRequestToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
 // Requests Routes
-app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
   
   const service = services.find(s => s.id === req.body.serviceId);
   if (!service) { res.status(400).json({ message: 'Invalid service' }); return; }
   
+  await syncFromGoogleSheets();
   const newRequest = {
     id: requestCounter++,
     studentId: req.user.id,
@@ -423,12 +541,13 @@ app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Respons
   };
   requests.push(newRequest);
   saveDb();
-  sendToGoogleSheets(newRequest);
+  await saveRequestToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
-app.get('/api/requests', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
+  await syncFromGoogleSheets();
   const role = req.user.role;
   let filteredRequests = [];
   
@@ -450,19 +569,21 @@ app.get('/api/requests', authenticate, (req: AuthenticatedRequest, res: Response
   res.json(filteredRequests.sort((a, b) => new Date(b['createdAt'] as string).getTime() - new Date(a['createdAt'] as string).getTime()));
 });
 
-app.delete('/api/requests/:id', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.delete('/api/requests/:id', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (req.user?.role !== 'Admin') { res.status(403).json({ message: 'Forbidden' }); return; }
   const { id } = req.params;
   
   const requestIndex = requests.findIndex(r => String(r['id']) === id);
   if (requestIndex === -1) { res.status(404).json({ message: 'Request not found' }); return; }
   
+  const deletedReqId = Number(requests[requestIndex]['id']);
   requests.splice(requestIndex, 1);
   saveDb();
+  await deleteRequestFromGoogleSheets(deletedReqId);
   res.status(204).send();
 });
 
-app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/requests/:id/verify', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
   const { id } = req.params;
   const { action, reason } = req.body;
@@ -486,7 +607,7 @@ app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, r
   saveDb();
   
   // Send to Google Sheets
-  sendToGoogleSheets(request, req.user.name, reason);
+  await saveRequestToGoogleSheets(request);
   
   // Emit notification to the student
   if (request['studentId'] !== 0) {
