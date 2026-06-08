@@ -78,6 +78,12 @@ export class AuthService {
       const port = typeof process !== 'undefined' && process.env['PORT'] ? process.env['PORT'] : 3000;
       return `http://127.0.0.1:${port}`;
     }
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname;
+      if (!host.includes('run.app') && host !== 'localhost' && host !== '127.0.0.1') {
+        return 'https://ais-pre-44slwifkesu35agrppcxak-151267158565.asia-east1.run.app';
+      }
+    }
     return '';
   }
 

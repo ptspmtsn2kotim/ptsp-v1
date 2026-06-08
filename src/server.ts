@@ -5,7 +5,8 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
-import {join} from 'node:path';
+import { join } from 'node:path';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 
@@ -27,6 +28,18 @@ import { Request, Response, NextFunction } from 'express';
 import nodemailer from 'nodemailer';
 
 app.use('/api', express.json());
+
+// Custom CORS headers for API access from external environments (like Vercel)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 
 // Prevent browser caching for API routes
 app.use('/api', (req, res, next) => {
@@ -138,6 +151,45 @@ const services = [
 const requests: Record<string, unknown>[] = [];
 let requestCounter = 1;
 
+// Database files
+const USERS_FILE = join(process.cwd(), 'users_db.json');
+const REQUESTS_FILE = join(process.cwd(), 'requests_db.json');
+
+function saveDb() {
+  try {
+    writeFileSync(USERS_FILE, JSON.stringify({ users, userCounter }, null, 2));
+    writeFileSync(REQUESTS_FILE, JSON.stringify({ requests, requestCounter }, null, 2));
+  } catch (error) {
+    console.error('Error saving mock database:', error);
+  }
+}
+
+function loadDb() {
+  try {
+    if (existsSync(USERS_FILE)) {
+      const data = JSON.parse(readFileSync(USERS_FILE, 'utf-8'));
+      if (data.users && Array.isArray(data.users)) {
+        users.length = 0;
+        users.push(...data.users);
+        userCounter = data.userCounter || users.length + 1;
+      }
+    }
+    if (existsSync(REQUESTS_FILE)) {
+      const data = JSON.parse(readFileSync(REQUESTS_FILE, 'utf-8'));
+      if (data.requests && Array.isArray(data.requests)) {
+        requests.length = 0;
+        requests.push(...data.requests);
+        requestCounter = data.requestCounter || requests.length + 1;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading mock database:', error);
+  }
+}
+
+// Initial DB load
+loadDb();
+
 // Middleware
 const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -196,6 +248,7 @@ app.post('/api/users', authenticate, (req: AuthenticatedRequest, res: Response) 
   
   const newUser = { id: userCounter++, username, password, role, name, nis, kelas, email };
   users.push(newUser);
+  saveDb();
   
   const safeUser = { ...newUser } as Record<string, unknown>;
   delete safeUser['password'];
@@ -243,6 +296,7 @@ app.put('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Respons
   }
   
   users[userIndex] = updatedUser;
+  saveDb();
   const safeUser = { ...updatedUser } as Record<string, unknown>;
   delete safeUser['password'];
 
@@ -283,6 +337,7 @@ app.delete('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Resp
   }
   
   users.splice(userIndex, 1);
+  saveDb();
   res.status(204).send();
 });
 
@@ -307,6 +362,7 @@ app.post('/api/public/requests', (req: Request, res: Response) => {
     history: [{ action: 'Pengajuan Dibuat', by: studentName, role: 'Publik', date: new Date().toISOString() }]
   };
   requests.push(newRequest);
+  saveDb();
   res.status(201).json(newRequest);
 });
 
@@ -330,6 +386,7 @@ app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Respons
     history: [{ action: 'Pengajuan Dibuat', by: req.user.name, role: req.user.role, date: new Date().toISOString() }]
   };
   requests.push(newRequest);
+  saveDb();
   res.status(201).json(newRequest);
 });
 
@@ -364,6 +421,7 @@ app.delete('/api/requests/:id', authenticate, (req: AuthenticatedRequest, res: R
   if (requestIndex === -1) { res.status(404).json({ message: 'Request not found' }); return; }
   
   requests.splice(requestIndex, 1);
+  saveDb();
   res.status(204).send();
 });
 
@@ -388,6 +446,7 @@ app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, r
     request['status'] = 'Selesai';
     (request['history'] as Record<string, unknown>[]).push({ action: 'Disetujui Final', by: req.user.name, role: req.user.role, date: new Date().toISOString() });
   }
+  saveDb();
   
   // Send to Google Sheets
   try {
