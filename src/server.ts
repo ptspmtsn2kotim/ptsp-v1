@@ -115,7 +115,7 @@ const users = [
 let userCounter = 11;
 
 const services = [
-  { id: 'surat-keterangan', name: 'Surat Keterangan Aktif', description: 'Pengajuan surat keterangan aktif sebagai siswa.', icon: 'description', targetRole: 'Staff Tata Usaha' },
+  { id: 'surat-keterangan', name: 'Permohonan Pembuatan Surat Keterangan', description: 'Pengajuan pembuatan surat keterangan aktif, berkelakuan baik, atau jenis lainnya.', icon: 'description', targetRole: 'Staff Tata Usaha' },
   { id: 'legalisir', name: 'Legalisir Raport', description: 'Pengajuan legalisir raport atau ijazah.', icon: 'verified', targetRole: 'Staff Tata Usaha' },
   
   // Waka Sarpras

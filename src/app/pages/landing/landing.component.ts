@@ -77,6 +77,23 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- Dokumen Arsip Card (Google Drive Folder) -->
+            <div class="bg-emerald-50/90 backdrop-blur-md rounded-3xl shadow-lg border border-emerald-200/60 p-8 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full group relative overflow-hidden">
+              <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-100/40 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+              <div class="w-16 h-16 bg-emerald-200 text-emerald-800 rounded-2xl flex items-center justify-center mb-8 relative z-10 group-hover:bg-emerald-700 group-hover:text-white transition-colors duration-300 shadow-sm">
+                <span class="material-icons text-3xl">folder_shared</span>
+              </div>
+              <h3 class="text-xl font-bold text-neutral-900 mb-4 relative z-10 flex items-center gap-2">
+                Dokumen Arsip
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white animate-pulse">DRIVE</span>
+              </h3>
+              <p class="text-neutral-600 mb-8 flex-grow leading-relaxed relative z-10">Akses folder Google Drive Dokumen Arsip untuk mengunduh berbagai data, format surat, dan berkas penting madrasah sesuai kebutuhan Anda.</p>
+              <a href="https://drive.google.com/drive/folders/1gglUO7KQzy8SR-U5kxoegiJ1jd8pmsJe" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-2 relative z-10 group/btn shadow-sm">
+                <span>Buka Google Drive</span>
+                <span class="material-icons text-sm group-hover/btn:translate-x-1 transition-transform">open_in_new</span>
+              </a>
+            </div>
+
             @for (service of services(); track service.id) {
               <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-lg border border-white/50 p-8 hover:shadow-xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full group relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
@@ -277,7 +294,35 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
                 }
                 
                 <form [formGroup]="formGroup" (ngSubmit)="submitForm()" class="space-y-5">
-                  @if (isPermohonan()) {
+                  @if (isSuratKeterangan()) {
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div class="col-span-1 md:col-span-2">
+                        <label for="jenisSurat" class="block text-sm font-medium text-neutral-700 mb-1">Jenis Surat Keterangan</label>
+                        <select id="jenisSurat" formControlName="jenisSurat" class="w-full px-4 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white outline-none transition-all">
+                          <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
+                          <option value="Surat Keterangan Berkelakuan Baik">Surat Keterangan Berkelakuan Baik</option>
+                          <option value="Surat Keterangan Lainnya">Surat Keterangan Lainnya</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label for="namaSiswa" class="block text-sm font-medium text-neutral-700 mb-1">Nama Lengkap Siswa</label>
+                        <input id="namaSiswa" type="text" formControlName="nama" class="w-full px-4 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all">
+                      </div>
+                      <div>
+                        <label for="kelasSiswa" class="block text-sm font-medium text-neutral-700 mb-1">Kelas</label>
+                        <input id="kelasSiswa" type="text" placeholder="Contoh: VII-A" formControlName="kelas" class="w-full px-4 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all">
+                      </div>
+                      <div class="col-span-1 md:col-span-2">
+                        <label for="keperluanSurat" class="block text-sm font-medium text-neutral-700 mb-1">Keperluan / Keterangan Lainnya</label>
+                        <textarea id="keperluanSurat" formControlName="keperluan" rows="3" placeholder="Contoh: Keperluan mendaftar beasiswa atau syarat lomba" class="w-full px-4 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"></textarea>
+                      </div>
+                      <div class="col-span-1 md:col-span-2">
+                        <label for="fileUploadSurat" class="block text-sm font-medium text-neutral-700 mb-1">Upload Dokumen Pendukung (Opsional)</label>
+                        <input id="fileUploadSurat" type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onFileChange($event)" class="w-full px-4 py-2 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                        <p class="text-xs text-neutral-500 mt-1">Format: PDF, JPG, JPEG, PNG</p>
+                      </div>
+                    </div>
+                  } @else if (isPermohonan()) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div class="col-span-1 md:col-span-2">
                         <label for="namaPemohon" class="block text-sm font-medium text-neutral-700 mb-1">Nama Pemohon</label>
@@ -377,6 +422,7 @@ export class LandingComponent implements OnInit {
 
   isPermohonan = signal(false);
   isPelaporan = signal(false);
+  isSuratKeterangan = signal(false);
 
   // Visitor Stats Signals
   visitorsToday = signal(142);
@@ -409,8 +455,17 @@ export class LandingComponent implements OnInit {
     
     this.isPermohonan.set(permohonanIds.includes(service.id));
     this.isPelaporan.set(pelaporanIds.includes(service.id));
+    this.isSuratKeterangan.set(service.id === 'surat-keterangan');
     
-    if (this.isPermohonan()) {
+    if (this.isSuratKeterangan()) {
+      this.formGroup = this.fb.group({
+        jenisSurat: ['Surat Keterangan Aktif Siswa', Validators.required],
+        nama: ['', Validators.required],
+        kelas: ['', Validators.required],
+        keperluan: ['', Validators.required],
+        fileUpload: ['']
+      });
+    } else if (this.isPermohonan()) {
       this.formGroup = this.fb.group({
         namaPemohon: ['', Validators.required],
         asalInstansi: ['', Validators.required],

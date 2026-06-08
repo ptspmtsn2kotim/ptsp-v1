@@ -100,9 +100,31 @@ import { FormsModule } from '@angular/forms';
                   <p class="text-neutral-500 text-xs uppercase tracking-wider">Layanan</p>
                   <p class="font-medium text-neutral-900 mt-1">{{ selectedRequest()?.serviceName }}</p>
                 </div>
-                <div class="col-span-2 mt-2">
-                  <p class="text-neutral-500 text-xs uppercase tracking-wider">Deskripsi</p>
-                  <p class="text-neutral-900 mt-1">{{ selectedRequest()?.data?.['description'] || '-' }}</p>
+                <div class="col-span-2 mt-2 space-y-3">
+                  <p class="text-neutral-500 text-xs uppercase tracking-wider border-b border-neutral-100 pb-1 font-semibold">Data Pengajuan</p>
+                  <div class="bg-white border border-neutral-200 rounded-xl overflow-hidden divide-y divide-neutral-100">
+                    @for (item of getObjectKeys(selectedRequest()?.data); track item) {
+                      <div class="px-4 py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 hover:bg-neutral-50/50">
+                        <dt class="text-xs font-semibold text-neutral-500 uppercase tracking-wider self-center capitalize">{{ item.replace('_', ' ') }}</dt>
+                        <dd class="mt-1 text-sm text-neutral-900 sm:mt-0 sm:col-span-2">
+                          @if (item === 'lokasiPelapor' && getObjectValue(selectedRequest()?.data, item).startsWith('Lat:')) {
+                            <a [href]="'https://www.google.com/maps/search/?api=1&query=' + getObjectValue(selectedRequest()?.data, item).replace('Lat: ', '').replace(', Lng: ', ',')" target="_blank" class="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1 font-medium">
+                              <span class="material-icons text-sm">location_on</span> Hubungkan Peta
+                            </a>
+                            <span class="text-xs text-neutral-400 block mt-0.5">{{ getObjectValue(selectedRequest()?.data, item) }}</span>
+                          } @else if (item === 'fileUpload' && getObjectValue(selectedRequest()?.data, item).startsWith('data:')) {
+                            <a [href]="getObjectValue(selectedRequest()?.data, item)" target="_blank" [download]="'lampiran_pengajuan_' + selectedRequest()?.id + '.png'" class="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1 font-medium">
+                              <span class="material-icons text-sm">download_for_offline</span> Unduh Lampiran Berkas
+                            </a>
+                          } @else {
+                            {{ getObjectValue(selectedRequest()?.data, item) }}
+                          }
+                        </dd>
+                      </div>
+                    } @empty {
+                      <div class="px-4 py-3 text-sm text-neutral-500 text-center">Tidak ada rincian form khusus</div>
+                    }
+                  </div>
                 </div>
               </div>
 
@@ -173,6 +195,16 @@ export class VerifikatorDashboardComponent implements OnInit {
 
   ngOnInit() {
     this.fetchRequests();
+  }
+
+  getObjectKeys(obj: unknown): string[] {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.keys(obj as Record<string, unknown>);
+  }
+
+  getObjectValue(obj: unknown, key: string): string {
+    if (!obj || typeof obj !== 'object') return '';
+    return String((obj as Record<string, unknown>)[key] || '');
   }
 
   fetchRequests() {

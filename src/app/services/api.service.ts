@@ -37,7 +37,7 @@ export interface UserItem {
 }
 
 export const DEFAULT_SERVICES: ServiceItem[] = [
-  { id: 'surat-keterangan', name: 'Surat Keterangan Aktif', description: 'Pengajuan surat keterangan aktif sebagai siswa.', icon: 'description', targetRole: 'Staff Tata Usaha' },
+  { id: 'surat-keterangan', name: 'Permohonan Pembuatan Surat Keterangan', description: 'Pengajuan pembuatan surat keterangan aktif, berkelakuan baik, atau jenis lainnya.', icon: 'description', targetRole: 'Staff Tata Usaha' },
   { id: 'legalisir', name: 'Legalisir Raport', description: 'Pengajuan legalisir raport atau ijazah.', icon: 'verified', targetRole: 'Staff Tata Usaha' },
   { id: 'laporan-kerusakan', name: 'Laporan Fasilitas Rusak', description: 'Laporan meja rusak, fasilitas kelas, dll.', icon: 'build', targetRole: 'Waka Sarpras' },
   { id: 'peminjaman-barang', name: 'Peminjaman Barang', description: 'Peminjaman inventaris madrasah.', icon: 'inventory_2', targetRole: 'Waka Sarpras' },

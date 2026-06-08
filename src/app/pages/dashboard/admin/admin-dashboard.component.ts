@@ -289,6 +289,10 @@ import { DatePipe, NgClass } from '@angular/common';
                               <span class="material-icons text-sm">location_on</span> Buka di Google Maps
                             </a>
                             <span class="text-xs text-neutral-500 block mt-1">{{ getObjectValue(selectedRequest()?.data, item) }}</span>
+                          } @else if (item === 'fileUpload' && getObjectValue(selectedRequest()?.data, item).startsWith('data:')) {
+                            <a [href]="getObjectValue(selectedRequest()?.data, item)" target="_blank" [download]="'lampiran_admin_' + selectedRequest()?.id + '.png'" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1 font-medium">
+                              <span class="material-icons text-sm">download_for_offline</span> Unduh Lampiran Berkas
+                            </a>
                           } @else {
                             {{ getObjectValue(selectedRequest()?.data, item) }}
                           }

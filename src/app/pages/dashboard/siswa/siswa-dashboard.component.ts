@@ -77,10 +77,27 @@ import { io, Socket } from 'socket.io-client';
                 </div>
               </div>
 
-              <div>
-                <label for="description" class="block text-sm font-medium text-neutral-700">Deskripsi / Keterangan Tambahan</label>
-                <textarea id="description" formControlName="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"></textarea>
-              </div>
+              @if (requestForm.value.serviceId === 'surat-keterangan') {
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="col-span-1 md:col-span-2">
+                    <label for="jenisSurat" class="block text-sm font-medium text-neutral-700">Jenis Surat Keterangan</label>
+                    <select id="jenisSurat" formControlName="jenisSurat" class="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white">
+                      <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
+                      <option value="Surat Keterangan Berkelakuan Baik">Surat Keterangan Berkelakuan Baik</option>
+                      <option value="Surat Keterangan Lainnya">Surat Keterangan Lainnya</option>
+                    </select>
+                  </div>
+                  <div class="col-span-1 md:col-span-2">
+                    <label for="keperluan" class="block text-sm font-medium text-neutral-700">Keperluan / Keterangan Lainnya</label>
+                    <textarea id="keperluan" formControlName="keperluan" rows="3" placeholder="Contoh: Keperluan mendaftar beasiswa atau syarat lomba" class="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"></textarea>
+                  </div>
+                </div>
+              } @else {
+                <div>
+                  <label for="description" class="block text-sm font-medium text-neutral-700">Deskripsi / Keterangan Tambahan</label>
+                  <textarea id="description" formControlName="description" rows="4" class="mt-1 block w-full px-3 py-2 border border-neutral-300 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"></textarea>
+                </div>
+              }
 
               <div class="flex justify-end">
                 <button type="submit" [disabled]="requestForm.invalid || isSubmitting()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2">
@@ -170,25 +187,32 @@ import { io, Socket } from 'socket.io-client';
                   <p class="text-neutral-500">Status</p>
                   <p class="font-medium text-neutral-900">{{ selectedRequest()?.status }}</p>
                 </div>
-                <div class="col-span-2">
-                  <p class="text-neutral-500">Deskripsi</p>
-                  <p class="text-neutral-900 bg-neutral-50 p-3 rounded-lg mt-1 border border-neutral-100">{{ selectedRequest()?.data?.['description'] || '-' }}</p>
-                </div>
-                @if (selectedRequest()?.data?.['lokasiPelapor']) {
-                  <div class="col-span-2">
-                    <p class="text-neutral-500">Lokasi Pelaporan</p>
-                    <div class="text-neutral-900 bg-neutral-50 p-3 rounded-lg mt-1 border border-neutral-100">
-                      @if ((selectedRequest()?.data?.['lokasiPelapor'] + '').startsWith('Lat:')) {
-                        <a [href]="'https://www.google.com/maps/search/?api=1&query=' + (selectedRequest()?.data?.['lokasiPelapor'] + '').replace('Lat: ', '').replace(', Lng: ', ',')" target="_blank" class="text-emerald-600 hover:text-emerald-800 flex items-center gap-1">
-                          <span class="material-icons text-sm">location_on</span> Buka di Google Maps
-                        </a>
-                        <span class="text-xs text-neutral-500 block mt-1">{{ selectedRequest()?.data?.['lokasiPelapor'] }}</span>
-                      } @else {
-                        {{ selectedRequest()?.data?.['lokasiPelapor'] }}
-                      }
-                    </div>
+                <div class="col-span-2 mt-2 space-y-3">
+                  <p class="text-neutral-500 text-xs uppercase tracking-wider border-b border-neutral-100 pb-1 font-semibold">Data Pengajuan</p>
+                  <div class="bg-neutral-50 border border-neutral-200 rounded-xl overflow-hidden divide-y divide-neutral-100">
+                    @for (item of getObjectKeys(selectedRequest()?.data); track item) {
+                      <div class="px-4 py-2.5 sm:grid sm:grid-cols-3 sm:gap-4 hover:bg-neutral-100/50">
+                        <dt class="text-xs font-semibold text-neutral-500 uppercase tracking-wider self-center capitalize">{{ item.replace('_', ' ') }}</dt>
+                        <dd class="mt-1 text-sm text-neutral-900 sm:mt-0 sm:col-span-2">
+                          @if (item === 'lokasiPelapor' && getObjectValue(selectedRequest()?.data, item).startsWith('Lat:')) {
+                            <a [href]="'https://www.google.com/maps/search/?api=1&query=' + getObjectValue(selectedRequest()?.data, item).replace('Lat: ', '').replace(', Lng: ', ',')" target="_blank" class="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1 font-medium">
+                              <span class="material-icons text-sm">location_on</span> Buka di Google Maps
+                            </a>
+                            <span class="text-xs text-neutral-400 block mt-0.5">{{ getObjectValue(selectedRequest()?.data, item) }}</span>
+                          } @else if (item === 'fileUpload' && getObjectValue(selectedRequest()?.data, item).startsWith('data:')) {
+                            <a [href]="getObjectValue(selectedRequest()?.data, item)" target="_blank" [download]="'lampiran_pengajuan_' + selectedRequest()?.id + '.png'" class="text-emerald-600 hover:text-emerald-800 inline-flex items-center gap-1 font-medium">
+                              <span class="material-icons text-sm">download_for_offline</span> Unduh Lampiran Berkas
+                            </a>
+                          } @else {
+                            {{ getObjectValue(selectedRequest()?.data, item) }}
+                          }
+                        </dd>
+                      </div>
+                    } @empty {
+                      <div class="px-4 py-3 text-sm text-neutral-500 text-center">Tidak ada rincian form khusus</div>
+                    }
                   </div>
-                }
+                </div>
               </div>
 
               <div>
@@ -246,7 +270,9 @@ export class SiswaDashboardComponent implements OnInit, OnDestroy {
 
   requestForm = this.fb.group({
     serviceId: ['', Validators.required],
-    description: ['']
+    description: [''],
+    jenisSurat: ['Surat Keterangan Aktif Siswa'],
+    keperluan: ['']
   });
 
   ngOnInit() {
@@ -304,11 +330,22 @@ export class SiswaDashboardComponent implements OnInit, OnDestroy {
       this.isSubmitting.set(true);
       this.submitError.set(null);
       
+      const formVal = this.requestForm.value;
+      const dataObj: Record<string, string> = {};
+      
+      if (formVal.serviceId === 'surat-keterangan') {
+        dataObj['jenis_surat'] = formVal.jenisSurat || 'Surat Keterangan Aktif Siswa';
+        dataObj['nama_pemohon'] = this.authService.currentUser()?.name || '';
+        dataObj['kelas'] = this.authService.currentUser()?.kelas || '';
+        dataObj['keperluan'] = formVal.keperluan || '';
+        dataObj['description'] = `Permohonan Pembuatan ${dataObj['jenis_surat']}. Keperluan: ${dataObj['keperluan']}`;
+      } else {
+        dataObj['description'] = formVal.description || '';
+      }
+
       const payload = {
-        serviceId: this.requestForm.value.serviceId,
-        data: {
-          description: this.requestForm.value.description
-        } as Record<string, string>
+        serviceId: formVal.serviceId,
+        data: dataObj
       };
 
       if (navigator.geolocation) {
@@ -347,6 +384,16 @@ export class SiswaDashboardComponent implements OnInit, OnDestroy {
         this.submitError.set('Gagal membuat pengajuan.');
       }
     });
+  }
+
+  getObjectKeys(obj: unknown): string[] {
+    if (!obj || typeof obj !== 'object') return [];
+    return Object.keys(obj as Record<string, unknown>);
+  }
+
+  getObjectValue(obj: unknown, key: string): string {
+    if (!obj || typeof obj !== 'object') return '';
+    return String((obj as Record<string, unknown>)[key] || '');
   }
 
   viewDetails(req: RequestItem) {
