@@ -171,7 +171,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
                 </div>
                 <h4 class="text-lg font-bold text-neutral-900 mb-2 relative z-10">Pengaduan</h4>
                 <p class="text-neutral-600 text-sm mb-6 flex-grow leading-relaxed relative z-10">Saluran pengaduan masyarakat atas ketidakpuasan pelayanan maupun dugaan pelanggaran lainnya.</p>
-                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeH6m-nxa6vTplHB2cW6WZZVZDqomSvvJBF5ELI4gGkpt4vuQ/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSfXwZK-kJoSE3XlwLo9-97y7x1weVPPWfJqgKjJOFASCnr0rA/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
                   <span>Isi Pengaduan</span>
                   <span class="material-icons text-xs font-bold">open_in_new</span>
                 </a>
