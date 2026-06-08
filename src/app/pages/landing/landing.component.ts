@@ -252,7 +252,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
           </div>
 
           <div class="border-t border-neutral-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p class="text-sm text-neutral-600">&copy; 2026 MTsN 2 Kotawaringin Timur. All rights reserved.</p>
+            <p class="text-sm text-neutral-600">&copy; 2026 MTsN 2 Kotawaringin Timur. Created by Adi Septianto N.</p>
             <div class="flex gap-6 text-sm text-neutral-600">
               <a href="#" class="hover:text-emerald-500 transition-colors">Kebijakan Privasi</a>
               <a href="#" class="hover:text-emerald-500 transition-colors">Syarat & Ketentuan</a>
