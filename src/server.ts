@@ -110,7 +110,7 @@ const users = [
   { id: 7, username: 'wakakesiswaan1', password: 'password', role: 'Waka Kesiswaan', name: 'Pak Waka Kesiswaan' },
   { id: 8, username: 'wakasarpras1', password: 'password', role: 'Waka Sarpras', name: 'Bu Waka Sarpras' },
   { id: 9, username: 'gurupiket1', password: 'password', role: 'Guru Piket', name: 'Pak Guru Piket' },
-  { id: 10, username: 'MTsN2Kotim', password: '47113291996', role: 'Admin', name: 'Super Admin' },
+  { id: 10, username: 'MTsN2Kotim', password: 'MTsN2KotimBerJaya', role: 'Admin', name: 'Super Admin' },
 ];
 let userCounter = 11;
 
