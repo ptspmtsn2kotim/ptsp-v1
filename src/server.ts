@@ -206,7 +206,7 @@ function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', re
 
     console.log(`Sending data to Google Sheets [${request['serviceName']}]:`, JSON.stringify(sheetData));
 
-    fetch('https://script.google.com/macros/s/AKfycbyTSsMUqc-k69_wb8OKS-8xGl_YCBckUBoHtDb6cUJf2Z4miswg2QqTOVSgDQcPSySotw/exec', {
+    fetch('https://script.google.com/macros/s/AKfycbxvbPYaZejERZr1vrOqXvhPOljDxF-7Jqz8lYVzuHJbCzEzYmC67c-I57Yj8bVVRFCrEw/exec', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
