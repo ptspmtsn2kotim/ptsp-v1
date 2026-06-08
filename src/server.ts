@@ -190,6 +190,41 @@ function loadDb() {
 // Initial DB load
 loadDb();
 
+// Google Sheets integration helper function
+function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', reason = '') {
+  try {
+    const sheetData = {
+      sheetName: request['serviceName'] as string,
+      status: (request['status'] as string) || 'Menunggu Verifikasi',
+      keterangan: reason || (request['status'] === 'Selesai' ? 'Disetujui' : (request['status'] === 'Ditolak' ? 'Ditolak' : 'Menunggu Verifikasi')),
+      admin: adminName,
+      tanggalVerifikasi: adminName ? new Date().toISOString() : '',
+      tanggalPengajuan: (request['createdAt'] as string) || new Date().toISOString(),
+      namaSiswa: (request['studentName'] as string) || 'Anonim',
+      ...((request['data'] || {}) as Record<string, unknown>)
+    };
+
+    console.log(`Sending data to Google Sheets [${request['serviceName']}]:`, JSON.stringify(sheetData));
+
+    fetch('https://script.google.com/macros/s/AKfycbyTSsMUqc-k69_wb8OKS-8xGl_YCBckUBoHtDb6cUJf2Z4miswg2QqTOVSgDQcPSySotw/exec', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sheetData)
+    })
+    .then(async (response) => {
+      const text = await response.text();
+      console.log(`Google Sheets integration response: Status ${response.status}`, text);
+    })
+    .catch(err => {
+      console.error('Failed to send to Google Sheets:', err);
+    });
+  } catch (e) {
+    console.error('Error preparing Google Sheets payload', e);
+  }
+}
+
 // Middleware
 const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -363,6 +398,7 @@ app.post('/api/public/requests', (req: Request, res: Response) => {
   };
   requests.push(newRequest);
   saveDb();
+  sendToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
@@ -387,6 +423,7 @@ app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Respons
   };
   requests.push(newRequest);
   saveDb();
+  sendToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
@@ -449,26 +486,7 @@ app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, r
   saveDb();
   
   // Send to Google Sheets
-  try {
-    const sheetData = {
-      sheetName: request['serviceName'],
-      status: request['status'],
-      keterangan: reason || 'Disetujui',
-      admin: req.user.name,
-      tanggalVerifikasi: new Date().toISOString(),
-      ...(request['data'] as Record<string, unknown>)
-    };
-
-    fetch('https://script.google.com/macros/s/AKfycbyTSsMUqc-k69_wb8OKS-8xGl_YCBckUBoHtDb6cUJf2Z4miswg2QqTOVSgDQcPSySotw/exec', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sheetData)
-    }).catch(err => console.error('Failed to send to Google Sheets:', err));
-  } catch (e) {
-    console.error('Error preparing Google Sheets payload', e);
-  }
+  sendToGoogleSheets(request, req.user.name, reason);
   
   // Emit notification to the student
   if (request['studentId'] !== 0) {
