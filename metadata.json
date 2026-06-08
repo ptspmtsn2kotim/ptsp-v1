@@ -1,0 +1,6 @@
+{
+  "name": "Sistem PTSP Madrasah",
+  "description": "Sistem Pelayanan Terpadu Satu Pintu (PTSP) Madrasah dengan Landing Page dan Dashboard RBAC",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
