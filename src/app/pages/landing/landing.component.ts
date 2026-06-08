@@ -109,6 +109,75 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
               </div>
             }
           </div>
+
+          <!-- Survey & Laporan Section -->
+          <div class="mt-20 border-t border-neutral-300/40 pt-16">
+            <div class="text-center mb-12">
+              <span class="text-emerald-700 font-bold tracking-widest uppercase text-xs bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-100 shadow-sm">Survei & Laporan</span>
+              <h3 id="survei-laporan" class="text-3xl sm:text-4xl font-extrabold text-neutral-900 mt-4 mb-4 drop-shadow-sm">Survei dan Laporan PTSP</h3>
+              <p class="text-neutral-700 max-w-2xl mx-auto text-base leading-relaxed font-normal">
+                Partisipasi Anda sangat penting bagi peningkatan kualitas pelayanan kami. Silakan isi form eksternal berikut untuk membantu kami mewujudkan lingkungan madrasah yang unggul, bersih, dan transparan.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <!-- Card 1: Buku Tamu -->
+              <div id="survey-buku-tamu" class="bg-white/95 backdrop-blur-md rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 border border-neutral-200/50 flex flex-col h-full group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-5 relative z-10 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-xs">
+                  <span class="material-icons text-2xl">menu_book</span>
+                </div>
+                <h4 class="text-lg font-bold text-neutral-900 mb-2 relative z-10">Buku Tamu</h4>
+                <p class="text-neutral-600 text-sm mb-6 flex-grow leading-relaxed relative z-10">Isi buku tamu kunjungan harian Anda ke Madrasah untuk pendataan administrasi kunjungan yang tertib.</p>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSdjcCSh2kVwPdhtv8hYMyj3AgiXSodiOKpKmbdyCeCIhFs3YQ/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
+                  <span>Isi Buku Tamu</span>
+                  <span class="material-icons text-xs font-bold">open_in_new</span>
+                </a>
+              </div>
+
+              <!-- Card 2: Survei Kepuasan Masyarakat -->
+              <div id="survey-kepuasan" class="bg-white/95 backdrop-blur-md rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 border border-neutral-200/50 flex flex-col h-full group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-5 relative z-10 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-xs">
+                  <span class="material-icons text-2xl">sentiment_satisfied</span>
+                </div>
+                <h4 class="text-lg font-bold text-neutral-900 mb-2 relative z-10">Survei Kepuasan</h4>
+                <p class="text-neutral-600 text-sm mb-6 flex-grow leading-relaxed relative z-10">Survei Kepuasan Masyarakat (IKM) untuk terus mengevaluasi dan meningkatkan kinerja pelayanan kami.</p>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLScEY04PKhgD_xWPP3LgRxPuVTFgR-N9KTie8f-IZ8r1dZWx0A/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
+                  <span>Isi Survei IKM</span>
+                  <span class="material-icons text-xs font-bold">open_in_new</span>
+                </a>
+              </div>
+
+              <!-- Card 3: Survei Indeks Persepsi Korupsi -->
+              <div id="survey-ipk" class="bg-white/95 backdrop-blur-md rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 border border-neutral-200/50 flex flex-col h-full group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-5 relative z-10 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-xs">
+                  <span class="material-icons text-2xl">gavel</span>
+                </div>
+                <h4 class="text-lg font-bold text-neutral-900 mb-2 relative z-10">Persepsi Korupsi</h4>
+                <p class="text-neutral-600 text-sm mb-6 flex-grow leading-relaxed relative z-10">Survei Indeks Persepsi Korupsi (IPK) guna menjaga madrasah tetap bersih, jujur, akuntabel, dan bebas pungli.</p>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeH6m-nxa6vTplHB2cW6WZZVZDqomSvvJBF5ELI4gGkpt4vuQ/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
+                  <span>Isi Survei IPK</span>
+                  <span class="material-icons text-xs font-bold">open_in_new</span>
+                </a>
+              </div>
+
+              <!-- Card 4: Pengaduan Masyarakat -->
+              <div id="survey-pengaduan" class="bg-white/95 backdrop-blur-md rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 border border-neutral-200/50 flex flex-col h-full group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-12 -mt-12 group-hover:scale-110 transition-transform"></div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-5 relative z-10 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300 shadow-xs">
+                  <span class="material-icons text-2xl">campaign</span>
+                </div>
+                <h4 class="text-lg font-bold text-neutral-900 mb-2 relative z-10">Pengaduan</h4>
+                <p class="text-neutral-600 text-sm mb-6 flex-grow leading-relaxed relative z-10">Saluran pengaduan masyarakat atas ketidakpuasan pelayanan maupun dugaan pelanggaran lainnya.</p>
+                <a href="https://docs.google.com/forms/d/e/1FAIpQLSeH6m-nxa6vTplHB2cW6WZZVZDqomSvvJBF5ELI4gGkpt4vuQ/viewform" target="_blank" rel="noopener noreferrer" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors mt-auto flex items-center justify-center gap-1.5 text-sm shadow-xs">
+                  <span>Isi Pengaduan</span>
+                  <span class="material-icons text-xs font-bold">open_in_new</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
