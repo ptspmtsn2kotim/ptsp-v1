@@ -2,7 +2,7 @@ import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformServer } from '@angular/common';
 import { of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, tap, map } from 'rxjs/operators';
 import { getLocalMockUsers } from './auth.service';
 
 export interface ServiceItem {
@@ -109,13 +109,51 @@ export class ApiService {
         }
       }),
       catchError(() => {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const localData = localStorage.getItem('local_requests');
-          if (localData) {
-            return of(JSON.parse(localData) as RequestItem[]);
-          }
-        }
-        return of([]);
+        // Fallback to Google Sheets
+        const gsUrl = 'https://script.google.com/macros/s/AKfycbyBe9CTI20JrcGQxkaf5RPy0vV6wCze9IHpS84pKv32wSM7k2YzRZA1eEIKk_Y912eg/exec?action=get_all';
+        return this.http.get<any>(gsUrl).pipe(
+          tap(() => console.log('Successfully fetched from Google Sheets!')),
+          // Map Google Sheets data to our format
+          map(gsData => {
+            if (gsData && gsData.status === 'success' && Array.isArray(gsData.data) && typeof window !== 'undefined') {
+              const mappedRequests: RequestItem[] = gsData.data.map((row: any) => {
+                 const reqObj: any = {
+                    id: Number(row['ID Pengajuan'] || row['id']) || Math.floor(Math.random() * 1000000),
+                    studentName: String(row['Nama Pengaju/Siswa'] || row['Nama Pemohon'] || row['Nama Pelapor'] || row['namaSiswa'] || 'Anonim'),
+                    serviceName: row['serviceName'],
+                    serviceId: DEFAULT_SERVICES.find(s => s.name === row['serviceName'])?.id || '',
+                    status: String(row['Status'] || row['status'] || 'Menunggu Verifikasi'),
+                    createdAt: String(row['Tanggal Pengajuan'] || row['tanggalPengajuan'] || new Date().toISOString()),
+                    studentId: 0,
+                    currentTier: 'Staff Admin',
+                    data: {},
+                    history: []
+                 };
+                 Object.keys(row).forEach(key => {
+                   if (!['serviceName', 'ID Pengajuan', 'id', 'Status', 'status', 'Tanggal Pengajuan', 'tanggalPengajuan', 'Nama Pengaju/Siswa', 'Nama Pemohon', 'Nama Pelapor', 'namaSiswa', 'Admin Verifikasi', 'admin', 'Tanggal Verifikasi', 'tanggalVerifikasi', 'Keterangan/Alasan/Catatan', 'keterangan'].includes(key)) {
+                     reqObj.data[key] = row[key];
+                   }
+                 });
+                 return reqObj as RequestItem;
+               });
+               localStorage.setItem('local_requests', JSON.stringify(mappedRequests));
+               return mappedRequests;
+            }
+            if (typeof window !== 'undefined' && window.localStorage) {
+               const localData = localStorage.getItem('local_requests');
+               if (localData) return JSON.parse(localData) as RequestItem[];
+            }
+            return [];
+          }),
+          catchError((err) => {
+             console.error('Failed to fetch from Google Sheets natively, trying fallback', err);
+             if (typeof window !== 'undefined' && window.localStorage) {
+               const localData = localStorage.getItem('local_requests');
+               if (localData) return of(JSON.parse(localData) as RequestItem[]);
+             }
+             return of([]);
+          })
+        );
       })
     );
   }
