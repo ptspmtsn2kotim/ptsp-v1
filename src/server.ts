@@ -440,17 +440,21 @@ app.get('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Re
   
   // Hydrate data from Google Sheets before responding, necessary for ephemeral Vercel backend
   try {
-    const gsRes = await fetch(`${APPS_SCRIPT_URL}?action=get_all`);
+    const gsRes = await fetch(`${APPS_SCRIPT_URL}?action=get_all`, { redirect: 'follow' });
     const gsText = await gsRes.text();
+    console.log('google sheets fetched text:', gsText.substring(0, 500));
     let gsData;
     try {
       gsData = JSON.parse(gsText);
-    } catch (e) {
+    } catch {
       console.error('Failed to parse Google Sheets response', gsText);
+      throw new Error('Failed to parse GS response');
     }
     
     if (gsData && gsData.status === 'success' && Array.isArray(gsData.data)) {
       requests.length = 0; // Clear ephemeral array
+      console.log('Google sheets mapped data size:', gsData.data.length);
+
       for (const row of gsData.data) {
         const reqObj: Record<string, unknown> = {
           id: Number(row['ID Pengajuan'] || row['id']) || Math.floor(Math.random() * 1000000),
@@ -479,9 +483,13 @@ app.get('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Re
         });
         requests.push(reqObj);
       }
+    } else {
+      throw new Error('Invalid GS status: ' + (gsData?.status || 'unknown'));
     }
   } catch (err) {
     console.error('Error fetching data from Google Sheets', err);
+    res.status(502).json({ message: 'Bad Gateway: Failed to fetch data from upstream source' });
+    return;
   }
 
   const role = req.user.role;

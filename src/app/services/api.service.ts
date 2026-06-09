@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { isPlatformServer } from '@angular/common';
 import { of } from 'rxjs';
 import { catchError, tap, map } from 'rxjs/operators';
-import { getLocalMockUsers } from './auth.service';
+import { getLocalMockUsers, AuthService } from './auth.service';
 
 export interface ServiceItem {
   id: string;
@@ -54,6 +54,7 @@ export const DEFAULT_SERVICES: ServiceItem[] = [
 })
 export class ApiService {
   private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private platformId = inject(PLATFORM_ID);
 
   private getBaseUrl() {
@@ -70,7 +71,7 @@ export class ApiService {
     return '';
   }
 
-  private sendToGoogleSheetsBackground(serviceId: string, data: any) {
+  private sendToGoogleSheetsBackground(serviceId: string, data: Record<string, unknown>) {
     if (typeof window !== 'undefined') {
        const sName = DEFAULT_SERVICES.find(s => s.id === serviceId)?.name || 'Layanan';
        const sheetData = {
@@ -87,8 +88,10 @@ export class ApiService {
            mode: 'no-cors',
            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
            body: JSON.stringify(sheetData)
-         }).catch(e => console.error('Background GS sync failed', e));
-       } catch(e) {}
+         }).catch(err => console.error('Background GS sync failed', err));
+       } catch(err) {
+         console.error('Error in sendToGoogleSheetsBackground', err);
+       }
     }
   }
 
@@ -109,24 +112,22 @@ export class ApiService {
         }
       }),
       catchError(() => {
-        // Fallback to Google Sheets
+        // Fallback to Google Sheets natively ONLY if backend unreachable
         const gsUrl = 'https://script.google.com/macros/s/AKfycbyBe9CTI20JrcGQxkaf5RPy0vV6wCze9IHpS84pKv32wSM7k2YzRZA1eEIKk_Y912eg/exec?action=get_all';
-        return this.http.get<any>(gsUrl).pipe(
-          tap(() => console.log('Successfully fetched from Google Sheets!')),
-          // Map Google Sheets data to our format
+        return this.http.get<{status: string, data: Record<string, unknown>[]}>(gsUrl).pipe(
           map(gsData => {
-            if (gsData && gsData.status === 'success' && Array.isArray(gsData.data) && typeof window !== 'undefined') {
-              const mappedRequests: RequestItem[] = gsData.data.map((row: any) => {
-                 const reqObj: any = {
+            if (gsData && gsData.status === 'success' && Array.isArray(gsData.data)) {
+              let mappedRequests: RequestItem[] = gsData.data.map((row) => {
+                 const reqObj: RequestItem = {
                     id: Number(row['ID Pengajuan'] || row['id']) || Math.floor(Math.random() * 1000000),
                     studentName: String(row['Nama Pengaju/Siswa'] || row['Nama Pemohon'] || row['Nama Pelapor'] || row['namaSiswa'] || 'Anonim'),
-                    serviceName: row['serviceName'],
+                    serviceName: String(row['serviceName'] || ''),
                     serviceId: DEFAULT_SERVICES.find(s => s.name === row['serviceName'])?.id || '',
                     status: String(row['Status'] || row['status'] || 'Menunggu Verifikasi'),
                     createdAt: String(row['Tanggal Pengajuan'] || row['tanggalPengajuan'] || new Date().toISOString()),
                     studentId: 0,
                     currentTier: 'Staff Admin',
-                    data: {},
+                    data: {} as Record<string, unknown>,
                     history: []
                  };
                  Object.keys(row).forEach(key => {
@@ -134,22 +135,48 @@ export class ApiService {
                      reqObj.data[key] = row[key];
                    }
                  });
-                 return reqObj as RequestItem;
+                 return reqObj;
                });
-               localStorage.setItem('local_requests', JSON.stringify(mappedRequests));
-               return mappedRequests;
+               
+               // Filter requests based on role
+               const user = this.authService.currentUser();
+               if (user) {
+                 const role = user.role;
+                 if (role !== 'Admin') {
+                   if (role === 'Siswa') {
+                     mappedRequests = mappedRequests.filter(r => r.studentId === user.id || r.studentName === user.name);
+                   } else {
+                     mappedRequests = mappedRequests.filter(r => {
+                       let isCurrentTier = r.currentTier === role;
+                       if (role === 'Guru Piket' && r.currentTier === 'Waka Kurikulum') {
+                          isCurrentTier = true;
+                       }
+                       const hasInteracted = r.history.some((h) => h.role === role);
+                       return isCurrentTier || hasInteracted;
+                     });
+                   }
+                 }
+               }
+               
+               if (typeof window !== 'undefined' && window.localStorage) {
+                 localStorage.setItem('local_requests', JSON.stringify(mappedRequests));
+               }
+               return mappedRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             }
-            if (typeof window !== 'undefined' && window.localStorage) {
-               const localData = localStorage.getItem('local_requests');
-               if (localData) return JSON.parse(localData) as RequestItem[];
-            }
-            return [];
+            throw new Error('Invalid GS Data');
           }),
           catchError((err) => {
-             console.error('Failed to fetch from Google Sheets natively, trying fallback', err);
+             console.error('Failed to fetch from GS, falling back to local storage', err);
              if (typeof window !== 'undefined' && window.localStorage) {
                const localData = localStorage.getItem('local_requests');
-               if (localData) return of(JSON.parse(localData) as RequestItem[]);
+               if (localData) {
+                 let parsed = JSON.parse(localData) as RequestItem[];
+                 const user = this.authService.currentUser();
+                 if (user && user.role === 'Siswa') {
+                    parsed = parsed.filter(r => r.studentId === user.id || r.studentName === user.name);
+                 }
+                 return of(parsed);
+               }
              }
              return of([]);
           })
@@ -160,7 +187,7 @@ export class ApiService {
 
   createRequest(data: Record<string, unknown>) {
     const serviceId = data['serviceId'] as string;
-    this.sendToGoogleSheetsBackground(serviceId, data['data'] || data);
+    this.sendToGoogleSheetsBackground(serviceId, (data['data'] as Record<string, unknown>) || data);
     return this.http.post<RequestItem>(`${this.getBaseUrl()}/api/requests`, data).pipe(
       catchError((err) => {
         if (typeof window !== 'undefined' && window.localStorage) {
