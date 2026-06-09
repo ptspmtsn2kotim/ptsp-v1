@@ -193,9 +193,9 @@ function loadDb() {
 loadDb();
 
 // Google Sheets integration and Real-time syncing helper functions
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwhO6dayWoSyfrtoKDJ16GIRCLVssblKlCY1AaT4U6f99Yl5PbvZRCDOraU7A4mLM_a2A/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBe9CTI20JrcGQxkaf5RPy0vV6wCze9IHpS84pKv32wSM7k2YzRZA1eEIKk_Y912eg/exec';
 
-function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', reason = '') {
+async function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', reason = '') {
   try {
     const sheetData = {
       sheetName: request['serviceName'] as string,
@@ -210,7 +210,7 @@ function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', re
 
     console.log(`Sending data to Google Sheets [${request['serviceName']}]:`, JSON.stringify(sheetData));
 
-    fetch(APPS_SCRIPT_URL, {
+    const response = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -220,14 +220,10 @@ function sendToGoogleSheets(request: Record<string, unknown>, adminName = '', re
         // Make sure date values are strings
         tanggalPengajuan: String(sheetData.tanggalPengajuan)
       })
-    })
-    .then(async (response) => {
-      const text = await response.text();
-      console.log(`Google Sheets integration response: Status ${response.status}`, text);
-    })
-    .catch(err => {
-      console.error('Failed to send to Google Sheets:', err);
     });
+    
+    const text = await response.text();
+    console.log(`Google Sheets integration response: Status ${response.status}`, text);
   } catch (e) {
     console.error('Error preparing Google Sheets payload', e);
   }
@@ -389,7 +385,7 @@ app.delete('/api/users/:id', authenticate, (req: AuthenticatedRequest, res: Resp
 });
 
 // Public Requests Route
-app.post('/api/public/requests', (req: Request, res: Response) => {
+app.post('/api/public/requests', async (req: Request, res: Response) => {
   const service = services.find(s => s.id === req.body.serviceId);
   if (!service) { res.status(400).json({ message: 'Invalid service' }); return; }
   
@@ -410,12 +406,12 @@ app.post('/api/public/requests', (req: Request, res: Response) => {
   };
   requests.push(newRequest);
   saveDb();
-  sendToGoogleSheets(newRequest);
+  await sendToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
 // Requests Routes
-app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
   
   const service = services.find(s => s.id === req.body.serviceId);
@@ -435,13 +431,59 @@ app.post('/api/requests', authenticate, (req: AuthenticatedRequest, res: Respons
   };
   requests.push(newRequest);
   saveDb();
-  sendToGoogleSheets(newRequest);
+  await sendToGoogleSheets(newRequest);
   res.status(201).json(newRequest);
 });
 
-app.get('/api/requests', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.get('/api/requests', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
   
+  // Hydrate data from Google Sheets before responding, necessary for ephemeral Vercel backend
+  try {
+    const gsRes = await fetch(`${APPS_SCRIPT_URL}?action=get_all`);
+    const gsText = await gsRes.text();
+    let gsData;
+    try {
+      gsData = JSON.parse(gsText);
+    } catch (e) {
+      console.error('Failed to parse Google Sheets response', gsText);
+    }
+    
+    if (gsData && gsData.status === 'success' && Array.isArray(gsData.data)) {
+      requests.length = 0; // Clear ephemeral array
+      for (const row of gsData.data) {
+        const reqObj: Record<string, unknown> = {
+          id: Number(row['ID Pengajuan'] || row['id']) || Math.floor(Math.random() * 1000000),
+          studentName: String(row['Nama Pengaju/Siswa'] || row['Nama Pemohon'] || row['Nama Pelapor'] || row['namaSiswa'] || 'Anonim'),
+          serviceName: row['serviceName'],
+          serviceId: '',
+          status: String(row['Status'] || row['status'] || 'Menunggu Verifikasi'),
+          createdAt: String(row['Tanggal Pengajuan'] || row['tanggalPengajuan'] || new Date().toISOString()),
+          studentId: 0,
+          currentTier: 'Staff Admin', // Ensure backward compatibility
+          data: {} as Record<string, unknown>,
+          history: []
+        };
+        
+        // Find matching service
+        const matchedService = services.find(s => s.name === reqObj['serviceName']);
+        if (matchedService) {
+           reqObj['serviceId'] = matchedService.id;
+        }
+
+        // Keep all other data
+        Object.keys(row).forEach(key => {
+          if (!['serviceName', 'ID Pengajuan', 'id', 'Status', 'status', 'Tanggal Pengajuan', 'tanggalPengajuan', 'Nama Pengaju/Siswa', 'Nama Pemohon', 'Nama Pelapor', 'namaSiswa', 'Admin Verifikasi', 'admin', 'Tanggal Verifikasi', 'tanggalVerifikasi', 'Keterangan/Alasan/Catatan', 'keterangan'].includes(key)) {
+            (reqObj['data'] as Record<string, unknown>)[key] = row[key];
+          }
+        });
+        requests.push(reqObj);
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching data from Google Sheets', err);
+  }
+
   const role = req.user.role;
   let filteredRequests = [];
   
@@ -476,7 +518,7 @@ app.delete('/api/requests/:id', authenticate, (req: AuthenticatedRequest, res: R
   res.status(204).send();
 });
 
-app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, res: Response) => {
+app.post('/api/requests/:id/verify', authenticate, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) { res.status(401).json({ message: 'Unauthorized' }); return; }
   const { id } = req.params;
   const { action, reason } = req.body;
@@ -500,7 +542,7 @@ app.post('/api/requests/:id/verify', authenticate, (req: AuthenticatedRequest, r
   saveDb();
   
   // Send to Google Sheets
-  sendToGoogleSheets(request, req.user.name, reason);
+  await sendToGoogleSheets(request, req.user.name, reason);
   
   // Emit notification to the student
   if (request['studentId'] !== 0) {

@@ -153,11 +153,50 @@ function doPost(e) {
   }
 }
 
-// Untuk mengecek koneksi Web App aktif melalui browser biasa (GET)
+// Untuk mengecek koneksi Web App aktif dan mengambil data melalui GET
 function doGet(e) {
+  try {
+    if (e.parameter && e.parameter.action === 'get_all') {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheets = ss.getSheets();
+      var allRequests = [];
+      
+      for (var i = 0; i < sheets.length; i++) {
+        var sheet = sheets[i];
+        var sheetName = sheet.getName();
+        var lastRow = sheet.getLastRow();
+        var lastCol = sheet.getLastColumn();
+        
+        if (lastRow > 0 && lastCol > 0) {
+          var data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+          var headers = data[0];
+          
+          for (var j = 1; j < data.length; j++) {
+            var row = data[j];
+            var obj = { serviceName: sheetName };
+            
+            for (var k = 0; k < headers.length; k++) {
+              var header = headers[k];
+              // Reverse translation of headers if needed, but we can just pass the raw object
+              obj[header] = row[k];
+            }
+            allRequests.push(obj);
+          }
+        }
+      }
+      
+      return createJsonResponse({
+        status: 'success',
+        data: allRequests
+      });
+    }
+  } catch (err) {
+    return createJsonResponse({ status: 'error', message: err.toString() });
+  }
+
   return createJsonResponse({ 
     status: 'online', 
-    message: 'Koneksi Apps Script Aktif. Gunakan POST untuk mengirim data.' 
+    message: 'Koneksi Apps Script Aktif. Gunakan POST untuk mengirim data atau GET ?action=get_all untuk mengambil.' 
   });
 }
 

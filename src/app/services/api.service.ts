@@ -70,6 +70,28 @@ export class ApiService {
     return '';
   }
 
+  private sendToGoogleSheetsBackground(serviceId: string, data: any) {
+    if (typeof window !== 'undefined') {
+       const sName = DEFAULT_SERVICES.find(s => s.id === serviceId)?.name || 'Layanan';
+       const sheetData = {
+          sheetName: sName,
+          status: 'Menunggu Verifikasi',
+          keterangan: 'Menunggu Verifikasi',
+          tanggalPengajuan: new Date().toISOString(),
+          namaSiswa: data['nama'] || data['namaPemohon'] || data['studentName'] || 'Masyarakat Umum',
+          ...data
+       };
+       try {
+         fetch('https://script.google.com/macros/s/AKfycbyBe9CTI20JrcGQxkaf5RPy0vV6wCze9IHpS84pKv32wSM7k2YzRZA1eEIKk_Y912eg/exec', {
+           method: 'POST',
+           mode: 'no-cors',
+           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+           body: JSON.stringify(sheetData)
+         }).catch(e => console.error('Background GS sync failed', e));
+       } catch(e) {}
+    }
+  }
+
   getServices() {
     return this.http.get<ServiceItem[]>(`${this.getBaseUrl()}/api/services?t=${new Date().getTime()}`).pipe(
       catchError(() => {
@@ -99,6 +121,8 @@ export class ApiService {
   }
 
   createRequest(data: Record<string, unknown>) {
+    const serviceId = data['serviceId'] as string;
+    this.sendToGoogleSheetsBackground(serviceId, data['data'] || data);
     return this.http.post<RequestItem>(`${this.getBaseUrl()}/api/requests`, data).pipe(
       catchError((err) => {
         if (typeof window !== 'undefined' && window.localStorage) {
@@ -135,6 +159,7 @@ export class ApiService {
   }
 
   submitPublicRequest(serviceId: string, data: Record<string, unknown>) {
+    this.sendToGoogleSheetsBackground(serviceId, data);
     return this.http.post<RequestItem>(`${this.getBaseUrl()}/api/public/requests`, { serviceId, data }).pipe(
       catchError((err) => {
         if (typeof window !== 'undefined' && window.localStorage) {
